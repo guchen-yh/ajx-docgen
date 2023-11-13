@@ -20,7 +20,11 @@
       {
         "command": "ajx-docgen.generate",
         "title": "Generate TSX Doc"
-      }
+      },
+      {
+        "command": "ajx-docgen.generateCodeTemplate",
+        "title": "Generate Code Template"
+     }
     ],
     "menus": {
       "editor/context": [
@@ -28,7 +32,12 @@
           "command": "ajx-docgen.generate",
           "group": "1_modification",
           "when": "resourceExtname == .tsx"
-        }
+        },
+        {
+            "command": "ajx-docgen.generateCodeTemplate",
+            "group": "1_modification",
+            "when": "resourceExtname == .tsx"
+          }
       ]
     }
   },
