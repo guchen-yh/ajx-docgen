@@ -100,32 +100,50 @@ function generatePropsTable(filePath: string): string {
     return propsTable;
 }
 
-function generateMarkdownForMembers(node: ts.InterfaceDeclaration, checker: ts.TypeChecker, fileName: string): { mdContent: string, mockContent: string } {
+function generateMarkdownForMembers(node: ts.InterfaceDeclaration, checker: ts.TypeChecker, fileName: string): {mdContent: string, mockContent: string} {
     let mdContent = '';
     let mockContent = '';
     node.members.forEach(member => {
-        if (ts.isPropertySignature(member)) {
-            const nameSymbol = checker.getSymbolAtLocation(member.name);
-            if (nameSymbol) {
-                let description = ts.displayPartsToString(nameSymbol.getDocumentationComment(checker));
-                const regex = /\/\/(.*)\n/g;
-                const comments = [];
-                let match;
-                while ((match = regex.exec(member.getFullText())) !== null) {
-                    comments.push(match[1].trim());
-                }
-                description += ' ' + comments.join(' ');
-                const type = checker.typeToString(checker.getTypeOfSymbolAtLocation(nameSymbol, member));
-                mdContent += `| ${nameSymbol.getName()} | ${description.trim()} | \`${type}\` | - |\n`;
-                let propName = nameSymbol.getName();
-                let propValue = generateMockValue(checker.typeToString(checker.getTypeOfSymbolAtLocation(nameSymbol, member)));
-                propValue && (mockContent += `${propName}=${propValue} `);
+      if (ts.isPropertySignature(member)) {
+        const nameSymbol = checker.getSymbolAtLocation(member.name);
+        if (nameSymbol) {
+          let description = ts.displayPartsToString(nameSymbol.getDocumentationComment(checker));
+          const regex = /\/\/(.*)\n/g;
+          const comments = [];
+          let match;
+          while ((match = regex.exec(member.getFullText())) !== null) {
+            comments.push(match[1].trim());
+          }
+          description += ' ' + comments.join(' ');
+          const type = checker.typeToString(checker.getTypeOfSymbolAtLocation(nameSymbol, member));
+  
+          // 提取默认值
+          let defaultValue = '-';
+          const jsDocTags = ts.getJSDocTags(member);
+          let descriptionWithTag = description;
+          jsDocTags.forEach(tag => {
+            if (tag.tagName.text === 'default') {
+              // 提取 @default 标签的内容
+              if (typeof tag.comment === 'string') {
+                defaultValue = tag.comment;
+              }
+            } else {
+              // 将其他注释添加到说明字段
+              descriptionWithTag += ' ' + tag.comment;
             }
+          });
+  
+          mdContent += `| ${nameSymbol.getName()} | ${descriptionWithTag.trim()} | \`${type}\` | ${defaultValue} |\n`;
+          let propName = nameSymbol.getName();
+          let propValue = generateMockValue(checker.typeToString(checker.getTypeOfSymbolAtLocation(nameSymbol, member)));
+          propValue && (mockContent += `${propName}=${propValue} `);
         }
+      }
     });
+    
+    return {mdContent, mockContent};
+  }
 
-    return { mdContent, mockContent };
-}
 
 
 function generateMockValue(type: string): string {
