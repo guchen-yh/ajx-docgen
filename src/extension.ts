@@ -29,7 +29,57 @@ export function activate(context: vscode.ExtensionContext) {
         }
         vscode.commands.executeCommand('vscode.open', vscode.Uri.file(docPath));
     });
-    const commands = [generate];
+    const insertTemplate = vscode.commands.registerCommand('ajx-docgen.insertTemplate', function () {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return; // 当没有打开的文件时，直接返回
+        }
+
+        const filePathParts = editor.document.fileName.split('/');
+        if (filePathParts.length === 0) {
+            vscode.window.showErrorMessage('Cannot parse file path');
+            return;
+        }
+
+        const fileNameWithExtension = filePathParts.pop();
+        if (!fileNameWithExtension) {
+            vscode.window.showErrorMessage('File name is empty');
+            return;
+        }
+
+        const fileNameParts = fileNameWithExtension.split('.');
+        if (fileNameParts.length === 0) {
+            vscode.window.showErrorMessage('Cannot parse file name');
+            return;
+        }
+
+        const fileName = fileNameParts[0]; // 获取当前文件名
+
+        const template = `
+import AJX from '@framework/FOXRax.js';
+/**
+ * @subtitle 文件功能标题
+ * @author $1
+ */
+
+interface Iprops{
+    /**
+     * 增加属性及注释
+     */
+}
+function ${fileName}(props: Iprops) {
+    return (
+        <div>
+            // 组件内容
+        </div>
+    );
+}
+export default ${fileName};
+`;
+
+        editor.insertSnippet(new vscode.SnippetString(template));
+    });
+    const commands = [generate, insertTemplate];
     context.subscriptions.push(...commands);
 }
 
@@ -41,15 +91,15 @@ async function convertToMarkdown(filePath: string) {
     const fileName = path.basename(filePath, path.extname(filePath));
 
     if (sourceFile) {
-        const {importedModule, typeName} = getTypeOfPropsFromDefaultExport(sourceFile);
-        if(importedModule && typeName){
+        const { importedModule, typeName } = getTypeOfPropsFromDefaultExport(sourceFile);
+        if (importedModule && typeName) {
             const moduleFilePath = await resolveModuleFilePath(importedModule);
             const program = ts.createProgram([moduleFilePath], {});
             const checker = program.getTypeChecker();
             const importsourceFile = program.getSourceFile(moduleFilePath);
-            if(importsourceFile){
+            if (importsourceFile) {
                 ts.forEachChild(importsourceFile, (node) => {
-                    if (ts.isInterfaceDeclaration(node)&&node.name.text === typeName) {
+                    if (ts.isInterfaceDeclaration(node) && node.name.text === typeName) {
                         const declarationText = node.getText(sourceFile);
                         console.log('declarationText', declarationText);
                         const content = generateMarkdownForNode(node, checker, fileName);
@@ -57,16 +107,16 @@ async function convertToMarkdown(filePath: string) {
                     }
                 });
             }
-        }else if(typeName){
+        } else if (typeName) {
             ts.forEachChild(sourceFile, (node) => visit(node, checker, typeName));
         }
     }
     return mdContent;
-    
+
     function visit(node: ts.Node, checker: ts.TypeChecker, typeName: string) {
-    
+
         if (ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) {
-            if(node.name.text === typeName){
+            if (node.name.text === typeName) {
                 mdContent += generateMarkdownForNode(node, checker, fileName);
             }
         } else {
@@ -96,13 +146,13 @@ async function generatePropsTable(filePath: string): Promise<string> {
     let propsTable = `## 属性\n\n| 属性 | 说明 | 类型 | 默认值 |\n| --- | --- | --- | --- |\n`;
 
     if (sourceFile) {
-        const {importedModule, typeName} = getTypeOfPropsFromDefaultExport(sourceFile);
-        if(importedModule && typeName){
+        const { importedModule, typeName } = getTypeOfPropsFromDefaultExport(sourceFile);
+        if (importedModule && typeName) {
             const moduleFilePath = await resolveModuleFilePath(importedModule);
             const program = ts.createProgram([moduleFilePath], {});
             const checker = program.getTypeChecker();
             const importsourceFile = program.getSourceFile(moduleFilePath);
-            if(importsourceFile){
+            if (importsourceFile) {
                 ts.forEachChild(importsourceFile, (node) => {
                     if (ts.isInterfaceDeclaration(node)) {
                         const declarationText = node.getText(sourceFile);
@@ -112,8 +162,8 @@ async function generatePropsTable(filePath: string): Promise<string> {
                     }
                 });
             }
-            
-        }else{
+
+        } else {
             ts.forEachChild(sourceFile, (node) => {
                 if (ts.isInterfaceDeclaration(node) && node.name.text === typeName) {
                     const declarationText = node.getText(sourceFile);
@@ -123,7 +173,7 @@ async function generatePropsTable(filePath: string): Promise<string> {
                 }
             });
         }
-        
+
     }
     return propsTable;
 }
@@ -248,26 +298,26 @@ async function generateComment() {
         const filePath = activeEditor ? activeEditor.document.fileName : '';
         const { name } = parse(filePath);
         const filename = name || '';
-    const text = activeEditor ? activeEditor.document.getText():'';
-    const matches = text.match(/\/\*\*\s*\n\s*\*\s*@subtitle\s*(.*?)\s*\n\s*\*\s*@author\s*(.*?)\s*\n/);
-    let comment = '';
-    if (matches && matches.length > 2) {
-        comment = `---
+        const text = activeEditor ? activeEditor.document.getText() : '';
+        const matches = text.match(/\/\*\*\s*\n\s*\*\s*@subtitle\s*(.*?)\s*\n\s*\*\s*@author\s*(.*?)\s*\n/);
+        let comment = '';
+        if (matches && matches.length > 2) {
+            comment = `---
 type: Basic
 title: ${filename}
 subtitle: ${matches[1]}
 owner: ${matches[2]}
 version: ${version}
 ---\n\n`;
-    } else {
-        comment = `---
+        } else {
+            comment = `---
 type: Basic
 title: ${filename}
 subtitle: 文件名——中文
 owner: ${creator}
 version: ${version}
 ---\n\n`;
-    }
+        }
         // 返回注释
         return comment;
     } catch (error) {
@@ -276,8 +326,10 @@ version: ${version}
 }
 
 // 第二步：查找默认导出的函数声明并获取props参数的类型
-function getTypeOfPropsFromDefaultExport (sourceFile: ts.SourceFile):{importedModule?: string,
-    typeName?: string} {
+function getTypeOfPropsFromDefaultExport(sourceFile: ts.SourceFile): {
+    importedModule?: string,
+    typeName?: string
+} {
     const importedTypes = getImportTypes(sourceFile);
     let result = {};
     // 查找默认导出语句
@@ -285,8 +337,8 @@ function getTypeOfPropsFromDefaultExport (sourceFile: ts.SourceFile):{importedMo
         ts.isExportAssignment(statement)
     );
 
-     // 检查默认导出是否是一个表达式
-     if (defaultExport && ts.isExportAssignment(defaultExport) && defaultExport.expression) {
+    // 检查默认导出是否是一个表达式
+    if (defaultExport && ts.isExportAssignment(defaultExport) && defaultExport.expression) {
         let exportExpr = defaultExport.expression;
         // 检查表达式是否是一个标识符，函数声明，函数表达式或箭头函数
         if (ts.isIdentifier(defaultExport.expression)) {
@@ -294,9 +346,9 @@ function getTypeOfPropsFromDefaultExport (sourceFile: ts.SourceFile):{importedMo
             // 标识符可能是一个变量名或者函数名，所以我们需要检查两种情况
             const symbolDeclaration = sourceFile.statements.find(statement => {
                 return (ts.isVariableStatement(statement) && statement.declarationList.declarations.some(decl => decl.name.getText(sourceFile) === exportExpr.text)) ||
-                       (ts.isFunctionDeclaration(statement) && statement.name?.text === exportExpr.text);
+                    (ts.isFunctionDeclaration(statement) && statement.name?.text === exportExpr.text);
             });
-            
+
             if (symbolDeclaration) {
                 if (ts.isFunctionDeclaration(symbolDeclaration)) {
                     // 这是一个函数声明，我们可以直接获取 props 参数的类型信息
@@ -322,7 +374,7 @@ function getTypeOfPropsFromDefaultExport (sourceFile: ts.SourceFile):{importedMo
                     });
                 }
             }
-            
+
         } else if (ts.isFunctionDeclaration(exportExpr) || ts.isFunctionExpression(exportExpr) || ts.isArrowFunction(exportExpr)) {
             // 如果是函数声明、函数表达式或箭头函数，则获取params
             const params = exportExpr.parameters;
@@ -345,7 +397,7 @@ function getTypeOfPropsFromDefaultExport (sourceFile: ts.SourceFile):{importedMo
         }
     }
     return result;
-  };
+};
 
 function getImportTypes(sourceFile: ts.SourceFile) {
     // 存储导入信息的映射
@@ -370,32 +422,32 @@ function getImportTypes(sourceFile: ts.SourceFile) {
 }
 
 function findRootDir(): string | undefined {
-    let path ;
-     // 获取当前活动的编辑器
-     const activeEditor = vscode.window.activeTextEditor;
-        
-     if (activeEditor) {
-         // 获取当前活动文件的 URI
-         const fileUri = activeEditor.document.uri;
-         
-         // 检查 URI 方案是否是 'file'，这意味着它指向一个文件
-         if (fileUri.scheme === 'file') {
-             // 获取文件的绝对路径
-             path = fileUri.fsPath;
-             
-             // 输出或使用文件路径
-             console.log(path);
-             vscode.window.showInformationMessage(`Current file path is: ${path}`);
-         }
-     } else {
-         vscode.window.showInformationMessage('No active editor!');
-     }
-     return path;
+    let path;
+    // 获取当前活动的编辑器
+    const activeEditor = vscode.window.activeTextEditor;
+
+    if (activeEditor) {
+        // 获取当前活动文件的 URI
+        const fileUri = activeEditor.document.uri;
+
+        // 检查 URI 方案是否是 'file'，这意味着它指向一个文件
+        if (fileUri.scheme === 'file') {
+            // 获取文件的绝对路径
+            path = fileUri.fsPath;
+
+            // 输出或使用文件路径
+            console.log(path);
+            vscode.window.showInformationMessage(`Current file path is: ${path}`);
+        }
+    } else {
+        vscode.window.showInformationMessage('No active editor!');
+    }
+    return path;
 }
 
 // 根据 import 语句解析文件路径
 async function resolveModuleFilePath(importPath: string): Promise<string> {
-    
+
     const curimportPath = importPath.split('.')[0];
     // 处理 ajx_modules 路径
     if (curimportPath.startsWith('@')) {
@@ -407,8 +459,8 @@ async function resolveModuleFilePath(importPath: string): Promise<string> {
         const modulesPath = curPath && findSrcDirectory(curPath, 'ajx_modules');
         const srcPath = modulesPath && path.join(modulesPath, moduleName, 'src');
         const res = srcPath && await findFileInDir(srcPath, new RegExp(`^${fileName}.*`));
-        return res ? res :'';
-    }else{
+        return res ? res : '';
+    } else {
         const curPath = findRootDir();
         const srcPath = curPath && findSrcDirectory(curPath, 'src');
         const res = srcPath && await findFileInDir(srcPath, new RegExp(`^${curimportPath}.*`));

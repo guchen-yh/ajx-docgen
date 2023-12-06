@@ -12,7 +12,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:ajx-docgen.generate"
+    "onCommand:ajx-docgen.generate",
+    "onCommand:ajx-docgen.insertTemplate"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -22,8 +23,8 @@
         "title": "Generate TSX Doc"
       },
       {
-        "command": "ajx-docgen.generateCodeTemplate",
-        "title": "Generate Code Template"
+        "command": "ajx-docgen.insertTemplate",
+        "title": "Insert Code Template"
      }
     ],
     "menus": {
@@ -34,7 +35,7 @@
           "when": "resourceExtname == .tsx"
         },
         {
-            "command": "ajx-docgen.generateCodeTemplate",
+            "command": "ajx-docgen.insertTemplate",
             "group": "1_modification",
             "when": "resourceExtname == .tsx"
           }
