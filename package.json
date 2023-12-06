@@ -3,7 +3,7 @@
   "displayName": "ajx-docgen",
   "description": "ajx-docgen",
   "publisher": "yh",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.46.0"
