@@ -299,14 +299,15 @@ async function generateComment() {
         const { name } = parse(filePath);
         const filename = name || '';
         const text = activeEditor ? activeEditor.document.getText() : '';
-        const matches = text.match(/\/\*\*\s*\n\s*\*\s*@subtitle\s*(.*?)\s*\n\s*\*\s*@author\s*(.*?)\s*\n/);
+        const subtitleMatches = text.match(/@subtitle\s+(.*?)\s+/);
+        const authorMatches = text.match(/@author\s+(.*?)\s+/);
         let comment = '';
-        if (matches && matches.length > 2) {
+        if ((subtitleMatches && subtitleMatches.length || authorMatches && authorMatches.length) ) {
             comment = `---
 type: Basic
 title: ${filename}
-subtitle: ${matches[1]}
-owner: ${matches[2]}
+subtitle: ${subtitleMatches?.[1] || '文件名——中文'}
+owner: ${authorMatches?.[1] || creator}
 version: ${version}
 ---\n\n`;
         } else {
